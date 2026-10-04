@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "description": "AI tarot reading app",
   "main": "server.js",
+  "engines": {
+    "node": ">=20.6"
+  },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node --env-file=.env server.js",
+    "download-cards": "node scripts/download-cards.js"
   },
   "dependencies": {
     "express": "^4.21.2"

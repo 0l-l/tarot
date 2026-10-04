@@ -2,80 +2,377 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <!-- Tells phones to use the real screen width instead of zooming out. Needed for responsive layout. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tarot Reading</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 0 16px; }
-    input { width: 100%; padding: 8px; box-sizing: border-box; }
-    button { margin-top: 10px; padding: 8px 16px; }
-    #cards { margin-top: 20px; font-weight: bold; }
-    #result { margin-top: 10px; white-space: pre-wrap; }
+    /* ============================================================
+       EDIT ME: colors and timing all live here.
+       ============================================================ */
+    :root {
+      /* Page colors */
+      --bg: #1b1530;
+      --text: #f3ecff;
+      --muted: #b9add6;
+      --accent: #d4af37;          /* gold: button, borders */
+
+      /* Card colors */
+      --card-back: #3b2a6b;
+      --card-back-pattern: #5a43a0;
+      --card-front: #fdf8ec;
+      --card-front-text: #2a1f45;
+
+      /* Error box colors */
+      --error-bg: #4a1f2e;
+      --error-border: #e57a8f;
+
+      /* Animation timing */
+      --flip-duration: 0.8s;      /* how long one card takes to flip */
+      --flip-stagger: 0.35s;      /* pause between card 1, 2 and 3 */
+
+      /* Card size on big screens (phones shrink automatically) */
+      --card-width: 170px;
+    }
+
+    /* ---------- Page layout ---------- */
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1.6;
+    }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 32px 16px;          /* 16px side gutter so nothing touches the phone's edge */
+    }
+
+    h1 {
+      text-align: center;
+      font-size: clamp(1.8rem, 6vw, 2.6rem);   /* shrinks on small screens */
+      margin: 0 0 24px;
+    }
+
+    /* ---------- Question + button ---------- */
+    .ask {
+      display: flex;
+      gap: 10px;
+    }
+
+    .ask input {
+      flex: 1;
+      min-width: 0;
+      padding: 12px;
+      font-size: 1rem;             /* 16px+ stops iPhones from zooming in on tap */
+      border-radius: 8px;
+      border: 1px solid var(--muted);
+      background: #2a2245;
+      color: var(--text);
+    }
+
+    .ask button {
+      padding: 12px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #1b1530;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .ask button:disabled { opacity: 0.6; cursor: wait; }
+
+    /* ---------- The three cards ---------- */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, var(--card-width)));
+      justify-content: center;
+      gap: 16px;
+      margin: 32px 0 24px;
+    }
+
+    .card {
+      aspect-ratio: 2 / 3;         /* classic tarot card shape */
+      perspective: 1000px;         /* gives the flip its 3D depth */
+    }
+
+    /* The part that actually rotates. */
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform var(--flip-duration) ease;
+      /* --i is 0, 1 or 2 (set in JavaScript), so each card starts a bit later. */
+      transition-delay: calc(var(--i) * var(--flip-stagger));
+    }
+
+    /* Adding the "flipped" class turns the card over. */
+    .card.flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+
+    /* Both sides sit on top of each other; the hidden side is invisible. */
+    .card-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border-radius: 12px;
+      border: 2px solid var(--accent);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .card-back {
+      background:
+        repeating-linear-gradient(45deg, var(--card-back) 0 10px, var(--card-back-pattern) 10px 20px);
+      color: var(--accent);
+      font-size: 2rem;
+    }
+
+    .card-front {
+      background: var(--card-front);
+      color: var(--card-front-text);
+      transform: rotateY(180deg);  /* starts facing away; flipping shows it */
+    }
+
+    .card-front .position {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      opacity: 0.7;
+    }
+
+    .card-front .name {
+      font-size: clamp(0.85rem, 3.2vw, 1.15rem);
+      font-weight: bold;
+      margin: 8px 0;
+    }
+
+    .card-front .orientation {
+      font-size: 0.75rem;
+      font-style: italic;
+    }
+
+    /* Reversed cards show their name upside down. */
+    .card.reversed .card-front .name {
+      transform: rotate(180deg);
+    }
+
+    /* ---------- Reading + errors ---------- */
+    #result {
+      white-space: pre-wrap;
+      min-height: 1.6em;
+    }
+
+    #result.loading { color: var(--muted); font-style: italic; }
+
+    #result.error {
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      border-radius: 8px;
+      padding: 12px 16px;
+    }
+
+    #result.error button {
+      display: block;
+      margin-top: 10px;
+      padding: 8px 16px;
+      border: 1px solid var(--error-border);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    /* ---------- Phones (screens 480px wide or less) ---------- */
+    @media (max-width: 480px) {
+      .ask { flex-direction: column; }     /* stack input above button */
+      .ask button { width: 100%; }
+      .cards { gap: 8px; }
+      .card-face { padding: 4px; border-radius: 8px; }
+      .card-back { font-size: 1.4rem; }
+      .card-front .position,
+      .card-front .orientation { font-size: 0.65rem; }
+    }
+
+    /* People who turned off animations in their phone/computer settings get an instant reveal. */
+    @media (prefers-reduced-motion: reduce) {
+      .card-inner { transition: none; }
+    }
   </style>
 </head>
 <body>
-  <h1>Tarot Reading</h1>
+  <main>
+    <h1>Tarot Reading</h1>
 
-  <input id="question" type="text" placeholder="What do you want to ask?" maxlength="300" />
-  <button id="drawBtn">Draw Cards</button>
+    <div class="ask">
+      <input id="question" type="text" placeholder="What do you want to ask?" maxlength="300" />
+      <button id="drawBtn">Draw Cards</button>
+    </div>
 
-  <div id="cards"></div>
-  <div id="result"></div>
+    <div id="cards" class="cards"></div>
+    <div id="result"></div>
+
+    <p class="footer">For entertainment only.</p>
+  </main>
 
   <script>
-    // A small starter deck (the 22 Major Arcana). We'll expand to 78 later.
-    const DECK = [
-      "The Fool", "The Magician", "The High Priestess", "The Empress",
-      "The Emperor", "The Hierophant", "The Lovers", "The Chariot",
-      "Strength", "The Hermit", "Wheel of Fortune", "Justice",
-      "The Hanged Man", "Death", "Temperance", "The Devil",
-      "The Tower", "The Star", "The Moon", "The Sun",
-      "Judgement", "The World"
-    ];
+    const POSITIONS = ["Past", "Present", "Future"];
+    const REQUEST_TIMEOUT_MS = 30000; // browser gives up after 30s (server gives up on Claude after 20s)
 
-    // Pick 3 different random cards: shuffle a copy of the deck, take the first 3.
-    function drawThree() {
-      const shuffled = [...DECK].sort(() => Math.random() - 0.5);
-      return shuffled.slice(0, 3);
-    }
-
-    // Grab the page elements we need to read from or write to.
     const questionInput = document.getElementById("question");
     const drawBtn = document.getElementById("drawBtn");
     const cardsDiv = document.getElementById("cards");
     const resultDiv = document.getElementById("result");
 
-    // Run this when the button is clicked.
-    drawBtn.addEventListener("click", async () => {
+    // ---------- Load the deck ----------
+    let DECK = [];
+    fetch("/cards.json")
+      .then((res) => res.json())
+      .then((cards) => { DECK = cards.map((c) => c.name); })
+      .catch(() => showError("Couldn't load the deck. Please refresh the page."));
+
+    // Pick 3 different random cards (fair Fisher–Yates shuffle). 1-in-4 chance each is reversed.
+    function drawThree() {
+      const shuffled = [...DECK];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled.slice(0, 3).map((name) => ({ name, reversed: Math.random() < 0.25 }));
+    }
+
+    // ---------- Show the cards face down, then flip them ----------
+    function showCards(cards) {
+      cardsDiv.innerHTML = ""; // clear old cards
+
+      cards.forEach((card, i) => {
+        const el = document.createElement("div");
+        el.className = "card" + (card.reversed ? " reversed" : "");
+        el.style.setProperty("--i", i); // used by CSS for the stagger delay
+        el.innerHTML = `
+          <div class="card-inner">
+            <div class="card-face card-back">✦</div>
+            <div class="card-face card-front">
+              <span class="position">${POSITIONS[i]}</span>
+              <span class="name"></span>
+              <span class="orientation">${card.reversed ? "Reversed" : "Upright"}</span>
+            </div>
+          </div>`;
+        el.querySelector(".name").textContent = card.name;
+        cardsDiv.appendChild(el);
+      });
+
+      // Wait two frames so the browser draws the face-down cards first,
+      // otherwise it skips straight to the end and there's no animation.
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        cardsDiv.querySelectorAll(".card").forEach((el) => el.classList.add("flipped"));
+      }));
+    }
+
+    // ---------- Result area helpers ----------
+    function showLoading() {
+      resultDiv.className = "loading";
+      resultDiv.textContent = "Reading the cards...";
+    }
+
+    function showReading(text) {
+      resultDiv.className = "";
+      resultDiv.textContent = text;
+    }
+
+    // Friendly error box, with an optional "Try again" button.
+    function showError(message, retry) {
+      resultDiv.className = "error";
+      resultDiv.textContent = message;
+      if (retry) {
+        const btn = document.createElement("button");
+        btn.textContent = "Try again";
+        btn.addEventListener("click", retry);
+        resultDiv.appendChild(btn);
+      }
+    }
+
+    // ---------- Ask the server for a reading ----------
+    async function getReading(question, cards) {
+      showLoading();
+      drawBtn.disabled = true;
+
+      // Our own timeout: cancel the request if the server doesn't answer in time.
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+      // "Try again" re-asks with the SAME cards, so the user keeps their draw.
+      const retry = () => getReading(question, cards);
+
+      try {
+        const response = await fetch("/api/reading", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, cards }),
+          signal: controller.signal
+        });
+
+        // If the server sent back something that isn't JSON (e.g. it crashed), don't crash too.
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok && data.reading) {
+          showReading(data.reading);
+        } else {
+          showError(data.error || "The cards are cloudy right now. Please try again.", retry);
+        }
+      } catch (err) {
+        if (err.name === "AbortError") {
+          showError("This is taking longer than usual. Please try again.", retry);
+        } else if (!navigator.onLine) {
+          showError("You seem to be offline. Check your internet connection and try again.", retry);
+        } else {
+          showError("Couldn't reach the server. Please try again in a moment.", retry);
+        }
+      } finally {
+        clearTimeout(timer);
+        drawBtn.disabled = false;
+      }
+    }
+
+    // ---------- Button click ----------
+    drawBtn.addEventListener("click", () => {
       const question = questionInput.value.trim();
       if (!question) {
-        resultDiv.textContent = "Please type a question first.";
+        showError("Please type a question first.");
+        return;
+      }
+      if (DECK.length === 0) {
+        showError("The deck is still loading. Try again in a second.");
         return;
       }
 
       const cards = drawThree();
-      cardsDiv.textContent = `Past: ${cards[0]} | Present: ${cards[1]} | Future: ${cards[2]}`;
-      resultDiv.textContent = "Reading the cards...";
-      drawBtn.disabled = true; // prevent double-clicks while waiting
+      showCards(cards);
+      getReading(question, cards);
+    });
 
-      try {
-        // Send the question and cards to our backend as JSON.
-        const response = await fetch("/api/reading", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, cards })
-        });
-
-        // Turn the JSON response back into a JavaScript object.
-        const data = await response.json();
-
-        // Show the reading, or the error message the server sent.
-        resultDiv.textContent = response.ok ? data.reading : `Error: ${data.error}`;
-      } catch (err) {
-        // Network failure, server down, etc.
-        resultDiv.textContent = "Could not reach the server. Is it running?";
-      } finally {
-        drawBtn.disabled = false;
-      }
+    // Pressing Enter in the text box also draws.
+    questionInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !drawBtn.disabled) drawBtn.click();
     });
   </script>
 </body>
