@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tarot Reading</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 0 16px; }
+    input { width: 100%; padding: 8px; box-sizing: border-box; }
+    button { margin-top: 10px; padding: 8px 16px; }
+    #cards { margin-top: 20px; font-weight: bold; }
+    #result { margin-top: 10px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Tarot Reading</h1>
+
+  <input id="question" type="text" placeholder="What do you want to ask?" maxlength="300" />
+  <button id="drawBtn">Draw Cards</button>
+
+  <div id="cards"></div>
+  <div id="result"></div>
+
+  <script>
+    // A small starter deck (the 22 Major Arcana). We'll expand to 78 later.
+    const DECK = [
+      "The Fool", "The Magician", "The High Priestess", "The Empress",
+      "The Emperor", "The Hierophant", "The Lovers", "The Chariot",
+      "Strength", "The Hermit", "Wheel of Fortune", "Justice",
+      "The Hanged Man", "Death", "Temperance", "The Devil",
+      "The Tower", "The Star", "The Moon", "The Sun",
+      "Judgement", "The World"
+    ];
+
+    // Pick 3 different random cards: shuffle a copy of the deck, take the first 3.
+    function drawThree() {
+      const shuffled = [...DECK].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, 3);
+    }
+
+    // Grab the page elements we need to read from or write to.
+    const questionInput = document.getElementById("question");
+    const drawBtn = document.getElementById("drawBtn");
+    const cardsDiv = document.getElementById("cards");
+    const resultDiv = document.getElementById("result");
+
+    // Run this when the button is clicked.
+    drawBtn.addEventListener("click", async () => {
+      const question = questionInput.value.trim();
+      if (!question) {
+        resultDiv.textContent = "Please type a question first.";
+        return;
+      }
+
+      const cards = drawThree();
+      cardsDiv.textContent = `Past: ${cards[0]} | Present: ${cards[1]} | Future: ${cards[2]}`;
+      resultDiv.textContent = "Reading the cards...";
+      drawBtn.disabled = true; // prevent double-clicks while waiting
+
+      try {
+        // Send the question and cards to our backend as JSON.
+        const response = await fetch("/api/reading", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, cards })
+        });
+
+        // Turn the JSON response back into a JavaScript object.
+        const data = await response.json();
+
+        // Show the reading, or the error message the server sent.
+        resultDiv.textContent = response.ok ? data.reading : `Error: ${data.error}`;
+      } catch (err) {
+        // Network failure, server down, etc.
+        resultDiv.textContent = "Could not reach the server. Is it running?";
+      } finally {
+        drawBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
