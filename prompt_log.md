@@ -11,8 +11,9 @@ Repo: https://github.com/0l-l/tarot
 
 ## Which tool for which job
 
-<!-- TODO (write this yourself, 2–3 sentences): why you used Claude/Cowork for planning, coding and
-     debugging, and why you chose Haiku for the in-app readings (cheap, fast, good writing tone). -->
+*(Drafted with Claude's help from our conversation; reviewed by me.)*
+
+I used **Claude in Cowork** for planning, writing code, explaining it line by line, and debugging. I chose it because it could read and write files directly in my local repo, test code before giving it to me, and check my git history for leaked keys. That made it better than copy-pasting from a chat window for a multi-file project. For the **readings inside the app**, I used **Claude Haiku 4.5** instead of a bigger model. It is fast and cheap (about $0.0024 per reading, so my $5 lasts a long time), and its writing is warm enough for tarot. I did not let the AI invent card meanings. I used the **tarotapi.dev** data (A. E. Waite's 1910 meanings) and passed those meanings into the prompt, so readings stay accurate. For debugging the deployment, the most useful tool was not AI at all: it was **Render's logs**, which showed the real error (401) that the AI could only guess at.
 
 ## Development process and prompts (verbatim, in order)
 
@@ -129,11 +130,8 @@ Result: gave Render access to the repo on GitHub. The 401 came from putting `100
 
 ## One place AI got it wrong
 
-<!-- TODO (write this yourself, one short paragraph). Real examples from this project:
-     - It told me normal Anthropic keys start with "sk-ant-api03-" and suggested my "sk-ant-usr-" key was the
-       wrong type. That was wrong: the prefix was fine; the real problem was that I pasted the
-       shortened preview / "100" into Render. The Render log (401) showed the real cause.
-     - Twice, a file it "saved" to my computer was actually an older version (the new tone prompt
-       silently didn't land), so I had features I thought I had but didn't. It started verifying
-       files with checksums after that.
-     Pick one, say what happened and what you did about it. -->
+*(Drafted with Claude's help from our conversation; reviewed by me.)*
+
+After deploying to Render, every reading failed with "The cards are cloudy right now." Claude confidently told me that normal Anthropic API keys start with `sk-ant-api03-`, so my `sk-ant-usr-` key was probably the wrong type. That was wrong: the prefix was fine. Instead of guessing further, I opened the Render logs and searched for "Claude". They showed `401 API key is invalid`. When I looked at my key in the Anthropic console, I realized the real problem: I had first typed `100` into the `ANTHROPIC_API_KEY` field (it was meant for `DAILY_READING_LIMIT`), and the console only shows a shortened preview like `sk-ant-usr-1Vl...IQAA`, not the full key. I created a new key, copied the full value with the Copy button, pasted it into Render, and the site worked. Claude then corrected its earlier claim. Lesson: check the real error message in the logs before trusting the AI's guess.
+
+A second, smaller one: twice, a file Claude said it had saved to my computer was actually an older version, so the new reading-tone prompt silently never reached my `server.js`. After I noticed, Claude started checking each saved file with a checksum to confirm it actually arrived.
