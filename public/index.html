@@ -5,33 +5,47 @@
   <!-- Tells phones to use the real screen width instead of zooming out. Needed for responsive layout. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tarot Reading</title>
+
+  <!-- Tab icon. SVG for modern browsers, PNG as a fallback, and a bigger one for phone home screens. -->
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+  <!-- Title and description shown when the link is pasted into a chat app -->
+  <meta name="description" content="Ask a question, draw three cards, and get a thoughtful AI tarot reading." />
+  <meta property="og:title" content="Tarot Reading" />
+  <meta property="og:description" content="Someone shared a tarot reading with you. Open it to see their cards." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Montserrat:wght@500;700&family=Noto+Serif+TC:wght@500;600&display=swap" rel="stylesheet" />
   <style>
     /* ============================================================
-       EDIT ME: colors and timing all live here.
+       EDIT ME: colors, fonts and timing all live here.
+       The card drawings use --ink too, so changing it recolors all 78 cards.
        ============================================================ */
     :root {
-      /* Page colors */
-      --bg: #1b1530;
-      --text: #f3ecff;
-      --muted: #b9add6;
-      --accent: #d4af37;          /* gold: button, borders */
+      /* Colors */
+      --paper: #f6f3ec;           /* page background */
+      --ink: #1d1b1a;             /* text, lines, card drawings */
+      --muted: #77716a;           /* small labels, loading text */
+      --card-front: #ffffff;      /* card face */
+      --card-back: #1d1b1a;       /* card back */
+      --error-bg: #fbeceb;
+      --error-border: #b4474f;
 
-      /* Card colors */
-      --card-back: #3b2a6b;
-      --card-back-pattern: #5a43a0;
-      --card-front: #fdf8ec;
-      --card-front-text: #2a1f45;
+      /* Fonts */
+      --font-display: "Cormorant Garamond", "Noto Serif TC", Georgia, serif;   /* titles, reading (Noto Serif TC = Chinese) */
+      --font-label: "Montserrat", Arial, sans-serif;          /* buttons, card names */
 
-      /* Error box colors */
-      --error-bg: #4a1f2e;
-      --error-border: #e57a8f;
+      /* Line thickness of card frames */
+      --line: 2px;
 
       /* Animation timing */
       --flip-duration: 0.8s;      /* how long one card takes to flip */
       --flip-stagger: 0.35s;      /* pause between card 1, 2 and 3 */
 
       /* Card size on big screens (phones shrink automatically) */
-      --card-width: 170px;
+      --card-width: 180px;
     }
 
     /* ---------- Page layout ---------- */
@@ -39,66 +53,124 @@
 
     body {
       margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: Georgia, "Times New Roman", serif;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--font-display);
+      font-size: 1.15rem;
       line-height: 1.6;
     }
 
     main {
-      max-width: 720px;
+      max-width: 760px;
       margin: 0 auto;
-      padding: 32px 16px;          /* 16px side gutter so nothing touches the phone's edge */
+      padding: 40px 16px;          /* 16px side gutter so nothing touches the phone's edge */
+    }
+
+    header { text-align: center; margin-bottom: 32px; position: relative; }
+
+    /* Language switch button, top-right corner */
+    .lang-btn {
+      position: absolute;
+      top: -24px;
+      right: 0;
+      padding: 6px 12px;
+      font-family: var(--font-label);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      border: 1px solid var(--ink);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    @media (hover: hover) {
+      .lang-btn:hover { background: var(--ink); color: var(--paper); }
     }
 
     h1 {
-      text-align: center;
-      font-size: clamp(1.8rem, 6vw, 2.6rem);   /* shrinks on small screens */
-      margin: 0 0 24px;
+      font-weight: 500;
+      font-size: clamp(2.2rem, 8vw, 3.4rem);   /* shrinks on small screens */
+      line-height: 1.1;
+      margin: 0;
     }
 
-    /* ---------- Question + button ---------- */
-    .ask {
-      display: flex;
-      gap: 10px;
+    .tagline {
+      font-family: var(--font-label);
+      font-size: 0.7rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 12px 0 0;
     }
+
+    .divider { color: var(--ink); letter-spacing: 0.6em; font-size: 0.8rem; margin-top: 14px; }
+
+    /* ---------- Question + button ---------- */
+    .ask { display: flex; gap: 12px; align-items: stretch; }
 
     .ask input {
       flex: 1;
       min-width: 0;
-      padding: 12px;
-      font-size: 1rem;             /* 16px+ stops iPhones from zooming in on tap */
-      border-radius: 8px;
-      border: 1px solid var(--muted);
-      background: #2a2245;
-      color: var(--text);
+      padding: 12px 4px;
+      font-family: var(--font-display);
+      font-size: 1.2rem;           /* 16px+ stops iPhones from zooming in on tap */
+      border: none;
+      border-bottom: var(--line) solid var(--ink);
+      background: transparent;
+      color: var(--ink);
+      outline: none;
     }
+
+    .ask input::placeholder { color: var(--muted); font-style: italic; }
 
     .ask button {
-      padding: 12px 20px;
-      font-size: 1rem;
-      border: none;
-      border-radius: 8px;
-      background: var(--accent);
-      color: #1b1530;
-      font-weight: bold;
+      padding: 12px 24px;
+      font-family: var(--font-label);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      border: var(--line) solid var(--ink);
+      border-radius: 6px;
+      background: var(--ink);
+      color: var(--paper);
       cursor: pointer;
+      transition: background 0.2s, color 0.2s;
     }
 
-    .ask button:disabled { opacity: 0.6; cursor: wait; }
+    /* Hover effect only on devices with a mouse (on phones it would "stick" after a tap). */
+    @media (hover: hover) {
+      .ask button:hover:not(:disabled) { background: transparent; color: var(--ink); }
+    }
+    .ask button:disabled { opacity: 0.5; cursor: wait; }
 
     /* ---------- The three cards ---------- */
     .cards {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, var(--card-width)));
       justify-content: center;
-      gap: 16px;
-      margin: 32px 0 24px;
+      gap: 18px;
+      margin: 40px 0 28px;
     }
 
+    .slot { text-align: center; }
+
+    /* "PAST / PRESENT / FUTURE" above each card, "Reversed" below */
+    .slot-label, .slot-orient {
+      font-family: var(--font-label);
+      font-size: 0.65rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .slot-label { margin-bottom: 8px; }
+    .slot-orient { margin-top: 8px; font-style: normal; }
+
     .card {
-      aspect-ratio: 2 / 3;         /* classic tarot card shape */
+      aspect-ratio: 5 / 7;         /* tall tarot card shape */
       perspective: 1000px;         /* gives the flip its 3D depth */
+      container-type: inline-size; /* lets text inside size itself to the card (cqi units) */
     }
 
     /* The part that actually rotates. */
@@ -113,9 +185,7 @@
     }
 
     /* Adding the "flipped" class turns the card over. */
-    .card.flipped .card-inner {
-      transform: rotateY(180deg);
-    }
+    .card.flipped .card-inner { transform: rotateY(180deg); }
 
     /* Both sides sit on top of each other; the hidden side is invisible. */
     .card-face {
@@ -123,82 +193,173 @@
       inset: 0;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
-      border-radius: 12px;
-      border: 2px solid var(--accent);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 8px;
-      text-align: center;
+      border-radius: 10px;
+      overflow: hidden;
     }
 
-    .card-back {
-      background:
-        repeating-linear-gradient(45deg, var(--card-back) 0 10px, var(--card-back-pattern) 10px 20px);
-      color: var(--accent);
-      font-size: 2rem;
-    }
+    .card-back { background: var(--card-back); }
+    .card-back svg { width: 100%; height: 100%; display: block; }
 
     .card-front {
       background: var(--card-front);
-      color: var(--card-front-text);
-      transform: rotateY(180deg);  /* starts facing away; flipping shows it */
+      color: var(--ink);
+      border: var(--line) solid var(--ink);
+      padding: 5px;                         /* gap between the outer and inner frame */
+      transform: rotateY(180deg);           /* starts facing away; flipping shows it */
     }
 
-    .card-front .position {
-      font-size: 0.75rem;
+    /* A reversed card is shown fully upside down, like a real reading. */
+    .card.reversed .card-front { transform: rotateY(180deg) rotate(180deg); }
+
+    /* Inner frame: numeral on top, drawing in the middle, name band at the bottom */
+    .frame {
+      height: 100%;
+      border: var(--line) solid var(--ink);
+      border-radius: 5px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .numeral {
+      font-family: var(--font-label);
+      font-weight: 700;
+      font-size: 7cqi;
+      letter-spacing: 0.15em;
+      text-align: center;
+      padding-top: 4%;
+    }
+
+    .art { flex: 1; min-height: 0; padding: 2% 8%; }
+    .art svg { width: 100%; height: 100%; display: block; }
+
+    .title {
+      border-top: var(--line) solid var(--ink);
+      font-family: var(--font-label);
+      font-weight: 700;
+      font-size: 6.2cqi;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      opacity: 0.7;
-    }
-
-    .card-front .name {
-      font-size: clamp(0.85rem, 3.2vw, 1.15rem);
-      font-weight: bold;
-      margin: 8px 0;
-    }
-
-    .card-front .orientation {
-      font-size: 0.75rem;
-      font-style: italic;
-    }
-
-    /* Reversed cards show their name upside down. */
-    .card.reversed .card-front .name {
-      transform: rotate(180deg);
+      text-align: center;
+      line-height: 1.2;
+      padding: 5% 4%;
     }
 
     /* ---------- Reading + errors ---------- */
-    #result {
-      white-space: pre-wrap;
-      min-height: 1.6em;
+    #result { white-space: pre-wrap; min-height: 1.6em; }
+
+    #result.reading {
+      border: var(--line) solid var(--ink);
+      outline: 1px solid var(--ink);
+      outline-offset: 4px;
+      border-radius: 6px;
+      padding: 20px 24px;
+      margin: 6px;
+      background: var(--card-front);
     }
 
-    #result.loading { color: var(--muted); font-style: italic; }
+    #result.loading { color: var(--muted); font-style: italic; text-align: center; }
 
     #result.error {
       background: var(--error-bg);
       border: 1px solid var(--error-border);
-      border-radius: 8px;
-      padding: 12px 16px;
+      border-radius: 6px;
+      padding: 14px 18px;
     }
 
     #result.error button {
       display: block;
       margin-top: 10px;
       padding: 8px 16px;
-      border: 1px solid var(--error-border);
-      border-radius: 6px;
+      font-family: var(--font-label);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      border: 1px solid var(--ink);
+      border-radius: 4px;
       background: transparent;
-      color: var(--text);
+      color: var(--ink);
       cursor: pointer;
     }
 
-    .footer {
-      margin-top: 40px;
+    /* ---------- Shared-reading banner (shown when opening a friend's link) ---------- */
+    .shared-banner {
       text-align: center;
-      font-size: 0.8rem;
+      margin-bottom: 28px;
+    }
+    .shared-banner .label {
+      font-family: var(--font-label);
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .shared-banner .shared-question {
+      font-size: 1.5rem;
+      font-style: italic;
+      margin: 6px 0 14px;
+    }
+
+    /* ---------- Share button + link ---------- */
+    .share-area {
+      margin-top: 28px;
+      text-align: center;
+    }
+
+    /* Outlined button style, used for "Share" and "Draw your own" */
+    .ghost-btn {
+      padding: 10px 20px;
+      font-family: var(--font-label);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      border: var(--line) solid var(--ink);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    @media (hover: hover) {
+      .ghost-btn:hover { background: var(--ink); color: var(--paper); }
+    }
+
+    .share-status {
+      font-family: var(--font-label);
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      min-height: 1.4em;
+      margin: 10px 0 6px;
+    }
+
+    .share-link {
+      width: 100%;
+      padding: 8px 10px;
+      font-family: var(--font-label);
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: var(--card-front);
+      border: 1px solid var(--muted);
+      border-radius: 4px;
+    }
+
+    [hidden] { display: none !important; }
+
+    /* ---------- Chinese mode tweaks ---------- */
+    /* Chinese card names are short, so they can be bigger. */
+    :lang(zh-Hant) .title { font-size: 9cqi; letter-spacing: 0.2em; }
+    /* Chinese has no real italics (browsers just slant it), so use upright text instead. */
+    :lang(zh-Hant) .ask input::placeholder,
+    :lang(zh-Hant) #result.loading,
+    :lang(zh-Hant) .shared-question { font-style: normal; }
+
+    .footer {
+      margin-top: 48px;
+      text-align: center;
+      font-family: var(--font-label);
+      font-size: 0.65rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
       color: var(--muted);
     }
 
@@ -207,10 +368,10 @@
       .ask { flex-direction: column; }     /* stack input above button */
       .ask button { width: 100%; }
       .cards { gap: 8px; }
-      .card-face { padding: 4px; border-radius: 8px; }
-      .card-back { font-size: 1.4rem; }
-      .card-front .position,
-      .card-front .orientation { font-size: 0.65rem; }
+      .card-face { border-radius: 7px; }
+      .card-front { padding: 3px; }
+      .slot-label, .slot-orient { font-size: 0.55rem; letter-spacing: 0.15em; }
+      #result.reading { padding: 16px; }
     }
 
     /* People who turned off animations in their phone/computer settings get an instant reveal. */
@@ -221,34 +382,126 @@
 </head>
 <body>
   <main>
-    <h1>Tarot Reading</h1>
+    <header>
+      <button id="langBtn" class="lang-btn" lang="zh-Hant">中文</button>
+      <h1 data-i18n="pageTitle">Tarot Reading</h1>
+      <p class="tagline" data-i18n="tagline">Ask &middot; Draw &middot; Reflect</p>
+      <div class="divider">&#10022; &#10022; &#10022;</div>
+    </header>
 
-    <div class="ask">
-      <input id="question" type="text" placeholder="What do you want to ask?" maxlength="300" />
-      <button id="drawBtn">Draw Cards</button>
+    <!-- Only visible when someone opens a shared link -->
+    <section id="sharedBanner" class="shared-banner" hidden>
+      <div class="label" data-i18n="sharedLabel">A reading shared with you</div>
+      <p class="shared-question" id="sharedQuestion"></p>
+      <button id="ownBtn" class="ghost-btn" data-i18n="drawOwn">Draw your own</button>
+    </section>
+
+    <div class="ask" id="askBox">
+      <input id="question" type="text" placeholder="What do you want to ask?" data-i18n-placeholder="placeholder" maxlength="300" />
+      <button id="drawBtn" data-i18n="draw">Draw Cards</button>
     </div>
 
     <div id="cards" class="cards"></div>
     <div id="result"></div>
 
-    <p class="footer">For entertainment only.</p>
+    <!-- Only visible after a reading -->
+    <div id="shareArea" class="share-area" hidden>
+      <button id="shareBtn" class="ghost-btn" data-i18n="share">Share this reading</button>
+      <div id="shareStatus" class="share-status" aria-live="polite"></div>
+      <input id="shareLink" class="share-link" type="text" readonly hidden aria-label="Share link" />
+    </div>
+
+    <p class="footer" data-i18n="footer">For entertainment only.</p>
   </main>
 
+  <!-- Line-art drawings for all 78 cards -->
+  <script src="/art.js"></script>
+  <!-- English / Traditional Chinese text -->
+  <script src="/translations.js"></script>
   <script>
-    const POSITIONS = ["Past", "Present", "Future"];
     const REQUEST_TIMEOUT_MS = 30000; // browser gives up after 30s (server gives up on Claude after 20s)
 
     const questionInput = document.getElementById("question");
     const drawBtn = document.getElementById("drawBtn");
     const cardsDiv = document.getElementById("cards");
     const resultDiv = document.getElementById("result");
+    const shareArea = document.getElementById("shareArea");
+    const shareBtn = document.getElementById("shareBtn");
+    const shareStatus = document.getElementById("shareStatus");
+    const shareLink = document.getElementById("shareLink");
+    const sharedBanner = document.getElementById("sharedBanner");
+    const askBox = document.getElementById("askBox");
+    const langBtn = document.getElementById("langBtn");
 
-    // ---------- Load the deck ----------
-    let DECK = [];
+    // What's on screen right now. Kept so a language switch can redraw the labels.
+    let currentCards = null;   // the 3 cards on the table
+    let lastReading = null;    // the reading, for the Share button
+    let resultState = null;    // { type: "loading" } or { type: "error", key, retry }
+    let shareStatusKey = null; // "copied" / "copyManual"
+
+    // =================================================================
+    // LANGUAGE
+    // =================================================================
+
+    // Pick the starting language: a saved choice, otherwise the browser's language.
+    function startingLanguage() {
+      try {
+        const saved = localStorage.getItem("tarot-lang");
+        if (I18N.LANGS.includes(saved)) return saved;
+      } catch { /* storage blocked: ignore */ }
+      const prefersChinese = (navigator.languages || [navigator.language]).some((l) =>
+        /^zh-(TW|HK|MO|Hant)/i.test(l)
+      );
+      return prefersChinese ? "zh-Hant" : "en";
+    }
+
+    let lang = startingLanguage();
+
+    // t("draw") → "Draw Cards" or "抽牌".  t("errors.busy") works too.
+    function t(key) {
+      return key.split(".").reduce((obj, k) => (obj ? obj[k] : undefined), I18N.TEXT[lang]) ?? key;
+    }
+
+    // Put the current language's text into every element marked with data-i18n.
+    function applyLanguage() {
+      document.documentElement.lang = t("htmlLang");
+      document.title = t("pageTitle");
+      document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+
+      // The button shows the OTHER language: "中文" while in English, "EN" while in Chinese.
+      langBtn.textContent = t("switchLabel");
+      langBtn.lang = lang === "en" ? "zh-Hant" : "en";
+      langBtn.setAttribute("aria-label", lang === "en" ? "切換至繁體中文" : "Switch to English");
+
+      // Re-translate whatever is already on screen.
+      if (currentCards) updateCardLabels();
+      if (resultState?.type === "loading") showLoading();
+      if (resultState?.type === "error") showError(resultState.key, resultState.retry);
+      if (shareStatusKey) shareStatus.textContent = t(shareStatusKey);
+    }
+
+    langBtn.addEventListener("click", () => {
+      lang = lang === "en" ? "zh-Hant" : "en";
+      try { localStorage.setItem("tarot-lang", lang); } catch { /* ignore */ }
+      applyLanguage();
+    });
+
+    applyLanguage(); // translate the page as soon as it loads
+
+    // =================================================================
+    // DECK + CARDS
+    // =================================================================
+    let DECK = [];                 // card names
+    const CARD_DATA = new Map();   // name → full card info (type, suit, number...) for art + translations
     fetch("/cards.json")
       .then((res) => res.json())
-      .then((cards) => { DECK = cards.map((c) => c.name); })
-      .catch(() => showError("Couldn't load the deck. Please refresh the page."));
+      .then((cards) => {
+        cards.forEach((c) => CARD_DATA.set(c.name, c));
+        DECK = cards.map((c) => c.name);
+        openSharedLink(); // if the page was opened from a share link, show that reading
+      })
+      .catch(() => showError("errors.deckFailed"));
 
     // Pick 3 different random cards (fair Fisher–Yates shuffle). 1-in-4 chance each is reversed.
     function drawThree() {
@@ -260,26 +513,35 @@
       return shuffled.slice(0, 3).map((name) => ({ name, reversed: Math.random() < 0.25 }));
     }
 
-    // ---------- Show the cards face down, then flip them ----------
+    // Show the cards face down, then flip them.
     function showCards(cards) {
+      currentCards = cards;
       cardsDiv.innerHTML = ""; // clear old cards
 
       cards.forEach((card, i) => {
-        const el = document.createElement("div");
-        el.className = "card" + (card.reversed ? " reversed" : "");
-        el.style.setProperty("--i", i); // used by CSS for the stagger delay
-        el.innerHTML = `
-          <div class="card-inner">
-            <div class="card-face card-back">✦</div>
-            <div class="card-face card-front">
-              <span class="position">${POSITIONS[i]}</span>
-              <span class="name"></span>
-              <span class="orientation">${card.reversed ? "Reversed" : "Upright"}</span>
+        const { art } = cardArt(CARD_DATA.get(card.name));
+
+        const slot = document.createElement("div");
+        slot.className = "slot";
+        slot.innerHTML = `
+          <div class="slot-label"></div>
+          <div class="card${card.reversed ? " reversed" : ""}" style="--i: ${i}">
+            <div class="card-inner">
+              <div class="card-face card-back">${cardBackArt}</div>
+              <div class="card-face card-front">
+                <div class="frame">
+                  <div class="numeral"></div>
+                  <div class="art">${art}</div>
+                  <div class="title"></div>
+                </div>
+              </div>
             </div>
-          </div>`;
-        el.querySelector(".name").textContent = card.name;
-        cardsDiv.appendChild(el);
+          </div>
+          <div class="slot-orient"></div>`;
+        cardsDiv.appendChild(slot);
       });
+
+      updateCardLabels(); // fill in names and labels in the current language
 
       // Wait two frames so the browser draws the face-down cards first,
       // otherwise it skips straight to the end and there's no animation.
@@ -288,30 +550,59 @@
       }));
     }
 
-    // ---------- Result area helpers ----------
-    function showLoading() {
-      resultDiv.className = "loading";
-      resultDiv.textContent = "Reading the cards...";
+    // Write card names, numerals and Past/Present/Future in the current language.
+    // textContent = always shown as plain text, never run as HTML.
+    function updateCardLabels() {
+      cardsDiv.querySelectorAll(".slot").forEach((slot, i) => {
+        const card = currentCards[i];
+        const data = CARD_DATA.get(card.name);
+        const isCourt = data.type === "minor" && data.value_int > 10;
+
+        slot.querySelector(".slot-label").textContent = t("positions")[i];
+        slot.querySelector(".slot-orient").textContent = card.reversed ? t("reversed") : t("upright");
+        slot.querySelector(".title").textContent = I18N.cardName(data, lang);
+        slot.querySelector(".numeral").textContent =
+          isCourt && lang === "zh-Hant" ? I18N.COURT_ZH[data.value_int] : cardArt(data).numeral;
+      });
     }
 
-    function showReading(text) {
-      resultDiv.className = "";
+    // =================================================================
+    // RESULT AREA
+    // =================================================================
+    function showLoading() {
+      hideShare();
+      resultState = { type: "loading" };
+      resultDiv.className = "loading";
+      resultDiv.textContent = t("loading");
+    }
+
+    // Show the reading and remember it so it can be shared.
+    function showReading(text, question, cards) {
+      resultState = null;
+      resultDiv.className = "reading";
       resultDiv.textContent = text;
+      lastReading = { question, cards, reading: text };
+      shareArea.hidden = false;
     }
 
     // Friendly error box, with an optional "Try again" button.
-    function showError(message, retry) {
+    // `key` is a translation key like "errors.busy".
+    function showError(key, retry) {
+      hideShare();
+      resultState = { type: "error", key, retry };
       resultDiv.className = "error";
-      resultDiv.textContent = message;
+      resultDiv.textContent = t(key);
       if (retry) {
         const btn = document.createElement("button");
-        btn.textContent = "Try again";
+        btn.textContent = t("tryAgain");
         btn.addEventListener("click", retry);
         resultDiv.appendChild(btn);
       }
     }
 
-    // ---------- Ask the server for a reading ----------
+    // =================================================================
+    // ASK THE SERVER FOR A READING
+    // =================================================================
     async function getReading(question, cards) {
       showLoading();
       drawBtn.disabled = true;
@@ -327,7 +618,7 @@
         const response = await fetch("/api/reading", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, cards }),
+          body: JSON.stringify({ question, cards, lang }), // lang tells Claude which language to write in
           signal: controller.signal
         });
 
@@ -335,18 +626,16 @@
         const data = await response.json().catch(() => ({}));
 
         if (response.ok && data.reading) {
-          showReading(data.reading);
+          showReading(data.reading, question, cards);
         } else {
-          showError(data.error || "The cards are cloudy right now. Please try again.", retry);
+          // The server sends a code like "busy"; show our translated message for it.
+          const known = data.code && I18N.TEXT.en.errors[data.code];
+          showError(known ? `errors.${data.code}` : "errors.generic", retry);
         }
       } catch (err) {
-        if (err.name === "AbortError") {
-          showError("This is taking longer than usual. Please try again.", retry);
-        } else if (!navigator.onLine) {
-          showError("You seem to be offline. Check your internet connection and try again.", retry);
-        } else {
-          showError("Couldn't reach the server. Please try again in a moment.", retry);
-        }
+        if (err.name === "AbortError") showError("errors.slow", retry);
+        else if (!navigator.onLine) showError("errors.offline", retry);
+        else showError("errors.unreachable", retry);
       } finally {
         clearTimeout(timer);
         drawBtn.disabled = false;
@@ -356,24 +645,144 @@
     // ---------- Button click ----------
     drawBtn.addEventListener("click", () => {
       const question = questionInput.value.trim();
-      if (!question) {
-        showError("Please type a question first.");
-        return;
-      }
-      if (DECK.length === 0) {
-        showError("The deck is still loading. Try again in a second.");
-        return;
-      }
+      if (!question) return showError("errors.emptyQuestion");
+      if (DECK.length === 0) return showError("errors.deckLoading");
 
       const cards = drawThree();
       showCards(cards);
       getReading(question, cards);
     });
 
-    // Pressing Enter in the text box also draws.
+    // Pressing Enter in the text box also draws (but not while typing Chinese with an input method).
     questionInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !drawBtn.disabled) drawBtn.click();
+      if (e.key === "Enter" && !e.isComposing && !drawBtn.disabled) drawBtn.click();
     });
+
+    // =================================================================
+    // SHARING
+    // The whole reading is packed into the link, after "#r=".
+    // Everything after "#" stays in the browser and is never sent to the server,
+    // so no database is needed and the server never sees shared readings.
+    // =================================================================
+
+    // Object → text that is safe to put in a URL (JSON → bytes → base64url).
+    function encodeShare(obj) {
+      const bytes = new TextEncoder().encode(JSON.stringify(obj)); // handles Chinese, emoji, accents...
+      let binary = "";
+      bytes.forEach((b) => { binary += String.fromCharCode(b); });
+      return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    }
+
+    // The reverse: URL text → object. Throws an error if the link is damaged.
+    function decodeShare(text) {
+      let b64 = text.replace(/-/g, "+").replace(/_/g, "/");
+      while (b64.length % 4) b64 += "=";
+      const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+      return JSON.parse(new TextDecoder().decode(bytes));
+    }
+
+    function buildShareUrl(r) {
+      // Short keys keep the link shorter: q = question, c = cards, r = reading.
+      const data = {
+        v: 1,
+        q: r.question,
+        c: r.cards.map((card) => [card.name, card.reversed ? 1 : 0]),
+        r: r.reading
+      };
+      return `${location.origin}${location.pathname}#r=${encodeShare(data)}`;
+    }
+
+    function hideShare() {
+      shareArea.hidden = true;
+      shareLink.hidden = true;
+      shareStatus.textContent = "";
+      shareStatusKey = null;
+    }
+
+    function setShareStatus(key) {
+      shareStatusKey = key;
+      shareStatus.textContent = t(key);
+    }
+
+    shareBtn.addEventListener("click", async () => {
+      if (!lastReading) return;
+      const url = buildShareUrl(lastReading);
+
+      // On phones: open the native share sheet (Messages, WhatsApp, LINE, etc.).
+      const isPhone = window.matchMedia("(pointer: coarse)").matches;
+      if (isPhone && navigator.share) {
+        try {
+          await navigator.share({ title: t("shareTitle"), text: `“${lastReading.question}”`, url });
+          return;
+        } catch (err) {
+          if (err.name === "AbortError") return; // user closed the share sheet; that's fine
+          // anything else: fall through to copying the link
+        }
+      }
+
+      // On computers (or if sharing failed): copy the link.
+      shareLink.value = url;
+      shareLink.hidden = false; // always show it too, so it can be copied by hand if needed
+      try {
+        await navigator.clipboard.writeText(url);
+        setShareStatus("copied");
+      } catch {
+        shareLink.select();
+        setShareStatus("copyManual");
+      }
+    });
+
+    // Clicking the link box selects all of it, for easy manual copying.
+    shareLink.addEventListener("focus", () => shareLink.select());
+
+    // ---------- Opening a shared link ----------
+    function openSharedLink() {
+      if (!location.hash.startsWith("#r=")) return;
+
+      let data;
+      try {
+        data = decodeShare(location.hash.slice(3));
+      } catch {
+        return showError("errors.badLink");
+      }
+
+      // Check everything before showing it: real cards, sensible lengths.
+      const valid =
+        data && data.v === 1 &&
+        typeof data.q === "string" && data.q.length <= 300 &&
+        typeof data.r === "string" && data.r.length <= 4000 &&
+        Array.isArray(data.c) && data.c.length === 3 &&
+        data.c.every((c) => Array.isArray(c) && CARD_DATA.has(c[0]));
+      if (!valid) return showError("errors.badLink");
+
+      const cards = data.c.map(([name, rev]) => ({ name, reversed: rev === 1 }));
+
+      // Show the banner with their question. textContent = shown as plain text, never as HTML.
+      document.getElementById("sharedQuestion").textContent = `“${data.q}”`;
+      sharedBanner.hidden = false;
+      askBox.hidden = true;
+
+      showCards(cards);
+      showReading(data.r, data.q, cards);
+    }
+
+    // "Draw your own": clear the shared reading and go back to a fresh page.
+    document.getElementById("ownBtn").addEventListener("click", () => {
+      history.replaceState(null, "", location.pathname); // remove "#r=..." from the address bar
+      sharedBanner.hidden = true;
+      askBox.hidden = false;
+      cardsDiv.innerHTML = "";
+      currentCards = null;
+      resultState = null;
+      resultDiv.className = "";
+      resultDiv.textContent = "";
+      hideShare();
+      lastReading = null;
+      questionInput.focus();
+    });
+
+    // If a share link is pasted into an already-open tab, show it.
+    window.addEventListener("hashchange", () => { if (CARD_DATA.size) openSharedLink(); });
   </script>
 </body>
 </html>
